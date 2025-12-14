@@ -31,4 +31,9 @@
 	name = Ankur Oberoi
 	email = aoberoi@gmail.com
 [credential]
-	helper = 1password
+	helper = 
+	helper = manager
+	credentialStore = gpg
+[credential "https://dev.azure.com"]
+	useHttpPath = true
+
