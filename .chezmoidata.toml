@@ -1,0 +1,5 @@
+[onepassword]
+vault = "Private"
+gpgPrivateKeyItem = "gpg-privatekey-primary"
+gpgPrivateKeyDoc = "privatekey.asc"
+

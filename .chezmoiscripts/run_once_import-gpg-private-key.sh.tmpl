@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+
+######
+# Import GPG private key from encrypted storage in 1Password.
+#
+# This depends on 1Password CLI being installed, and the vault being unlocked.
+# TODO: Write a script that installs 1Password CLI, checks for being signed in
+#
+# This depends on gpg being installed on the local machine
+# TODO: Write a script that installs required packages, such as gpg
+#
+# NOTE: When a private key is rotated, the item in 1Password should be updated,
+# the previous key should be revoked, and then this script needs to manually be
+# triggered to import the new private key into the local machine gpg.
+# $ chezmoi state delete --bucket=scriptState --key="$(chezmoi state dump | jq -r '.scriptState | to_entries[] | select(.value.name | contains("import-gpg")) | .key')"
+# $ chezmoi apply
+#
+#####
+
+# strict error handling
+set -euo pipefail
+
+# constants
+vault="{{ .onepassword.vault }}"
+item="{{ .onepassword.gpgPrivateKeyItem }}"
+doc="{{ .onepassword.gpgPrivateKeyDoc }}"
+
+# Any new files created by this script will get 600 permissions (directories will get 700)
+umask 077
+
+# Ensure GNUPG home exists with correct perms
+mkdir -p "$HOME/.gnupg"
+chmod 700 "$HOME/.gnupg"
+
+# Create a tmp directory as a scratchspace for this script, and ensure it gets
+# cleaned up regardless of how the script exits.
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+# Write private key into temporary file
+keyfile="$tmp/privatekey.asc"
+op read "op://$vault/$item/$doc" >"$keyfile"
+
+# Basic sanity check: looks like an armored secret key block
+if ! grep -q "BEGIN PGP PRIVATE KEY BLOCK" "$keyfile"; then
+  echo "Error: Retrieved content does not look like an armored private key export." >&2
+  exit 1
+fi
+
+# Runtime idempotency check
+# Extract the primary key fingerprint from the key material WITHOUT importing it.
+fpr="$(gpg --with-colons --import-options show-only --import "$keyfile" 2>/dev/null \
+  | awk -F: '$1=="fpr"{print $10; exit}')"
+
+if [ -z "${fpr:-}" ]; then
+  echo "Error: Could not extract fingerprint from key material." >&2
+  exit 1
+fi
+
+# If that secret key is already present, do nothing.
+if gpg --list-secret-keys --with-colons "$fpr" >/dev/null 2>&1; then
+  exit 0
+fi
+
+# Import. This may prompt for passphrase via pinentry (expected).
+gpg --batch --import "$keyfile"
+
+# vim: set filetype=bash:
