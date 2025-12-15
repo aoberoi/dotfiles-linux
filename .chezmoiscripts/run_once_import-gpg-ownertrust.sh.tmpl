@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+######
+# Import GPG web of trust from encrypted storage in 1Password.
+#
+# This depends on 1Password CLI being installed, and the vault being unlocked.
+# TODO: Write a script that installs 1Password CLI, checks for being signed in
+#
+# This depends on gpg being installed on the local machine
+# TODO: Write a script that installs required packages, such as gpg
+#
+# This script is not idempotent. It does not check at template render time or at
+# runtime for the equivalence of the existing web of trust. Therefore, we depend
+# on chezmoi's cache of scripts to avoid re-running this unnecessarily. The
+# cache lookup will be a hit regardless of updating the item in 1Password,
+# because the contents of that item are only known at script runtime (not template
+# render time). If you expect an up-to-date web of trust, perform the following
+# steps. There are no serious conseuqences of an out of date web of trust, just
+# annoyances.
+#
+# NOTE: When the web of trust is updated, the item in 1Password should be updated,
+# and then this script needs to manually be triggered to import the new web of
+# trust into the local machine gpg.
+# $ chezmoi state delete --bucket=scriptState --key="$(chezmoi state dump | jq -r '.scriptState | to_entries[] | select(.value.name | contains("import-gpg-ownertrust")) | .key')"
+# $ chezmoi apply
+#
+#####
+
+set -euo pipefail
+
+# constants
+vault="{{ .onepassword.vault }}"
+item="{{ .onepassword.gpgOwnerTrustItem }}"
+field="{{ .onepassword.gpgOwnerTrustFilename }}"
+
+# Any new files created by this script will get 600 permissions (directories will get 700)
+umask 077
+
+# Ensure GNUPG home exists with correct perms
+mkdir -p "$HOME/.gnupg"
+chmod 700 "$HOME/.gnupg"
+
+# Create a tmp directory as a scratchspace for this script, and ensure it gets
+# cleaned up regardless of how the script exits.
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+# Write trust ring into temporary file
+trustfile="$tmp/ownertrust.txt"
+op read "op://$vault/$item/$field" >"$trustfile"
+
+# Sanity check: ownertrust lines usually look like:
+# <FINGERPRINT>:<TRUSTLEVEL>:
+# and often include a comment header line starting with '#'
+if ! (grep -Eq '^[0-9A-F]{40}:[0-9]+:' "$trustfile" || grep -Eq '^#' "$trustfile"); then
+  echo "Error: Retrieved content does not look like a GPG ownertrust export." >&2
+  exit 1
+fi
+
+# Import trust (batch avoids interactive prompts)
+gpg --batch --import-ownertrust "$trustfile"
+
+# vim: set filetype=bash:
+

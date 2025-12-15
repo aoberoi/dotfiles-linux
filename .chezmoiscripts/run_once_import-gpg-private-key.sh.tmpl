@@ -12,7 +12,7 @@
 # NOTE: When a private key is rotated, the item in 1Password should be updated,
 # the previous key should be revoked, and then this script needs to manually be
 # triggered to import the new private key into the local machine gpg.
-# $ chezmoi state delete --bucket=scriptState --key="$(chezmoi state dump | jq -r '.scriptState | to_entries[] | select(.value.name | contains("import-gpg")) | .key')"
+# $ chezmoi state delete --bucket=scriptState --key="$(chezmoi state dump | jq -r '.scriptState | to_entries[] | select(.value.name | contains("import-gpg-private-key")) | .key')"
 # $ chezmoi apply
 #
 #####
@@ -23,7 +23,7 @@ set -euo pipefail
 # constants
 vault="{{ .onepassword.vault }}"
 item="{{ .onepassword.gpgPrivateKeyItem }}"
-doc="{{ .onepassword.gpgPrivateKeyDoc }}"
+doc="{{ .onepassword.gpgPrivateKeyFilename }}"
 
 # Any new files created by this script will get 600 permissions (directories will get 700)
 umask 077

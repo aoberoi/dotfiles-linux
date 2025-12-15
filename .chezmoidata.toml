@@ -1,5 +1,7 @@
 [onepassword]
 vault = "Private"
 gpgPrivateKeyItem = "gpg-privatekey-primary"
-gpgPrivateKeyDoc = "privatekey.asc"
+gpgPrivateKeyFilename = "privatekey.asc"
+gpgOwnerTrustItem = "gpg-ownertrust"
+gpgOwnerTrustFilename = "ownertrust.txt"
 
