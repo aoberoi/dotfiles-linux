@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+
+######
+# Import GPG subkeys from encrypted storage in 1Password.
+#
+# This depends on 1Password CLI being installed, and the vault being unlocked.
+# TODO: Write a script that installs 1Password CLI, checks for being signed in
+#
+# This depends on gpg being installed on the local machine
+# TODO: Write a script that installs required packages, such as gpg
+#
+# NOTE: Subkeys have a finite expiration date. When subkeys are rotated, the
+# previous subkeys don't necessarily have to be revoked. The new subkeys
+# should be updated in the encypted 1Password storage. Then this script needs
+# to manually be triggered to import the new subkeys into the local machine
+# gpg.
+# $ chezmoi state delete --bucket=scriptState --key="$(chezmoi state dump | jq -r '.scriptState | to_entries[] | select(.value.name | contains("import-gpg-subkeys")) | .key')"
+# $ chezmoi apply
+#
+#####
+
+# strict error handling
+set -euo pipefail
+
+# constants
+vault="{{ .onepassword.vault }}"
+item="{{ .onepassword.gpgSubkeyItem }}"
+doc="{{ .onepassword.gpgSubkeyFilename }}"
+
+# Any new files created by this script will get 600 permissions (directories will get 700)
+umask 077
+
+# Ensure GNUPG home exists with correct perms
+mkdir -p "$HOME/.gnupg"
+chmod 700 "$HOME/.gnupg"
+
+# Create a tmp directory as a scratchspace for this script, and ensure it gets
+# cleaned up regardless of how the script exits.
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+# Write subkey secrets into temporary file
+keyfile="$tmp/subkeys-secret.asc"
+op read "op://$vault/$item/$doc" >"$keyfile"
+
+# Extract the primary fingerprint from the armored blob itself.
+# We take the first pubkey fingerprint found in the file.
+primary_fpr="$(
+  gpg --show-keys --with-colons "$keyfile" \
+    | awk -F: '$1=="fpr" { print $10; exit }'
+)"
+
+if [[ -z "${primary_fpr}" ]]; then
+  echo "ERROR: could not extract primary fingerprint from subkeys blob"
+  exit 1
+fi
+
+# Import subkeys. This may prompt for passphrase via pinentry (expected).
+gpg --import "$keyfile" >/dev/null
+
+# Assert: primary secret key is NOT present after import.
+# We accept `sec#` (secret missing stub) and reject `sec ` (secret present).
+if gpg --list-secret-keys --with-subkey-fingerprint "$primary_fpr" | grep -qE '^sec[[:space:]]'; then
+  echo "ERROR: primary secret key appears to be present after import (fp=${primary_fpr})"
+  exit 1
+fi
+
+# Sanity: ensure we have at least one secret subkey after import.
+if ! gpg --list-secret-keys --with-subkey-fingerprint "$primary_fpr" | grep -qE '^ssb[[:space:]]'; then
+  echo "ERROR: no secret subkeys found after import (fp=${primary_fpr})"
+  exit 1
+fi
+
+echo "GPG subkeys imported successfully (primary fp=${primary_fpr})"
+
+# vim: set filetype=bash:
