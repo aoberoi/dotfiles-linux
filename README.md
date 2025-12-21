@@ -12,25 +12,26 @@ Another dotfiles repo
 
 ## Operating
 
-### Manual sync
+### GPG Keys and Secrets
 
-When data or config doesn't live in a format that is designed to be portable (e.g. mixed with caches and
-generated data), we might have some manual steps to keep things in sync.
+The primary key is in encrypted storage and never needs to "come online". Therefore the primary key is
+not directly handled in the scripts in this repo. However, the primary key will need to be used to
+generate new subkeys as older subkeys expire. Similarly, the revocation certificate for the primary
+key is also stored in encrypted storage and never needs to "come online". The revocation cert does not
+need to be used at all, unless the primary key is compromised.
 
-* gpg
-    * private key
-      - The update procedure is described in `.chezmoiscripts/run_once_import-gpg-private-key.sh.tmpl`.
-      - List current keys: `gpg --list-secret-keys --keyid-format long`
-      - Export the current private key into a file: `gpg --export-secret-keys --armor {FINGERPRINT} > privatekey.asc` ⚠ **Delete this file when you're done with it**.
-      - Update the 1Password item with the new private key export: `op document edit gpg-privatekey-primary privatekey.asc`.
-      - Add a 1Password item for the revocation cert: `op document create ~/.gnupg/openpgp-revocs.d/{NEW_FINGERPRINT}.rev --title "gpg-revocation-{FIRST_EIGHT_FINGERPRINT}"`
-      - The corresponding public key can be exported after the private key is restored: `gpg --export --armor {FINGERPRINT} > publickey.asc`
-    * web of trust
-      - The web of trust is bound to grow and change as it gets used. It's not critical on its own, but its
-        good to backup preiodically.
-      - The update procedure is described in `.chezmoiscripts/run_once_import-gpg-ownertrust.sh.tmpl`.
-      - Export the current web of trust into a file: `gpg --export-ownertrust > ownertrust.txt` **Delete this file when you're done with it**.
-      - Update the 1Password item with the new private key export: `op document edit gpg-ownertrust ownertrust.txt`. 
+Subkeys are used for actual day-to-day operations such as signing and encrypting. The script
+`.chezmoiscripts/run_once_import-gpg-subkeys.sh.tmpl` is used to load the subkeys from an export that
+is stored in 1Password into the local machine's gpg client. However subkeys will eventually expire and
+will need to be replaced by new subkeys. There's [a runbook](runbooks/gpg_subkey_rotation_runbook.md) for this procedure.
+
+Helpful tips: 
+- Update the 1Password item with the new file (like a key export) `op document edit <item_name> <filename>`.
+- Export a public key: `gpg --export --armor {FINGERPRINT} > publickey.asc`
+- The web of trust is bound to grow and change as it getrs used. It's not critical on its own, but its good
+  to back up periodically. The `.chezmoiscripts/run_once_import-gpg-ownertrust.sh.tmpl` script imports the
+  backup from 1Password into the local machine. Read that script to understand how the web of trust should
+  be backed up and updated.
 
 ## Helpful commands
 
