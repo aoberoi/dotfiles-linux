@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+######
+# Adds symlinks in **system** config locations that target
+# files or directories within the **user** config (home directory)
+######
+
+
+## keyd
+if [ -e /etc/keyd ] || [ -L /etc/keyd ]; then
+    if [ ! -L /etc/keyd ] || [ "$(readlink /etc/keyd)" != "{{ .chezmoi.destDir }}/.config/keyd" ]; then
+        echo "Error: /etc/keyd exists but is not a symlink to {{ .chezmoi.destDir }}/.config/keyd" >&2
+        exit 1
+    fi
+else
+    sudo ln -s {{ .chezmoi.destDir }}/.config/keyd /etc/keyd
+fi
