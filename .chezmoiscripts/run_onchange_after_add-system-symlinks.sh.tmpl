@@ -7,6 +7,7 @@
 
 
 ## keyd
+# https://github.com/rvaiya/keyd
 if [ -e /etc/keyd ] || [ -L /etc/keyd ]; then
     if [ ! -L /etc/keyd ] || [ "$(readlink /etc/keyd)" != "{{ .chezmoi.destDir }}/.config/keyd" ]; then
         echo "Error: /etc/keyd exists but is not a symlink to {{ .chezmoi.destDir }}/.config/keyd" >&2
@@ -14,4 +15,15 @@ if [ -e /etc/keyd ] || [ -L /etc/keyd ]; then
     fi
 else
     sudo ln -s {{ .chezmoi.destDir }}/.config/keyd /etc/keyd
+fi
+
+## libinput
+# https://wayland.freedesktop.org/libinput/doc/latest/device-quirks.htmlA
+if [ -e /etc/libinput/local-overrides.quirks ] || [ -L /etc/libinput/local-overrides.quirks ]; then
+    if [ ! -L /etc/libinput/local-overrides.quirks ] || [ "$(readlink /etc/libinput/local-overrides.quirks)" != "{{ .chezmoi.destDir }}/.config/libinput/local-overrides.quirks" ]; then
+        echo "Error: /etc/libinput/local-overrides.quirks exists but is not a symlink to {{ .chezmoi.destDir }}/.config/libinput/local-overrides.quirks" >&2
+        exit 1
+    fi
+else
+    sudo ln -s {{ .chezmoi.destDir }}/.config/libinput/local-overrides.quirks /etc/libinput/local-overrides.quirks
 fi

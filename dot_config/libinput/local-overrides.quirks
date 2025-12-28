@@ -1,0 +1,10 @@
+[Serial Keyboards]
+
+# Support disable-while-typing for touchpad, while keyd is mapping the keyboard
+# https://github.com/rvaiya/keyd?tab=readme-ov-file#why-is-my-trackpad-is-interfering-with-input-after-enabling-keyd
+MatchUdevType=keyboard
+MatchName=keyd*keyboard
+AttrKeyboardIntegration=internal
+
+# Enables side volume buttons when keyboard is folded behind display
+ModelTabletModeNoSuspend=1
