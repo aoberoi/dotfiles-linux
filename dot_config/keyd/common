@@ -1,0 +1,5 @@
+# Caps Lock functions as Esc (on tap) or Ctrl (on hold)
+# TODO: Instead of Control, make it Hyper on hold
+capslock = overload(control, esc)
+
+# vim: set filetype=conf:
