@@ -1,5 +1,14 @@
-# Caps Lock functions as Esc (on tap) or Ctrl (on hold)
-# TODO: Instead of Control, make it Hyper on hold
-# capslock = overload(control, esc)
+# Caps Lock functions as Esc (on tap) or Hyper (on hold)
+# Hyper is an X11 concept, but as a convention has the meaning of
+# Ctrl+Shift+Alt+Meta.
+[main]
+capslock = overload(hyper_layer, esc)
+
+[hyper_layer:C-S-A-M]
+# Arrow keys directly in the home row, using VIM conventions
+h = left
+j = down
+k = up
+l = right
 
 # vim: set filetype=conf:
